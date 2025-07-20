@@ -7,7 +7,7 @@ from os.path import isfile
 import pandas as pd
 
 #Multipliyer for techs since they take longer
-techTime = 4
+SA_TECH_TIME = 4
 
 FUSIONS_TO_SHOW = 5
 
@@ -173,40 +173,29 @@ def sdrop():
     sqlCMD += '(' + idStr[:-1] + ')' 
     mycursor.execute(sqlCMD)
 
-    oponProbs = dict()
-    dropList = mycursor.fetchall()
-    
-    for cid,oponent,rank,prob,stars in dropList:
-        if rank == 3:
-            prob = prob/techTime
-        if (oponent,rank) in oponProbs.keys():
-            oponProbs[(oponent,rank)] += prob *stars
-        else:
-            oponProbs[(oponent,rank)] = prob *stars
+    print("\n---Drops---")
+    cols = ["cid", "oponent", "rank", "prob", "stars"]
+    dropList = pd.DataFrame(mycursor.fetchall(), columns=cols)
 
-    oponProbs = sorted(oponProbs.items(), key=lambda item: item[1], reverse=True)
-    for i in range(min(len(oponProbs),5)):
-        oponId,rankId = oponProbs[i][0]
+    dropList = dropList[~dropList["oponent"].isin([35, 39])]
 
-        #remove oponents with duplicate drops
-        if oponId not in [35,39]:
-            print(oponNames[oponId-1] + "-" + rankNames[rankId-1] + f': {int(oponProbs[i][1]):,}')
-            for cid,oponent,rank,prob,_ in dropList:
-                if oponent == oponId and rank == rankId:
-                    print(cardNames[cid-1]+' (%i), '%(prob), end='')
-            print('\n')
-    return len(oponProbs) == 0
+    dropList["value"] = dropList["prob"]*dropList["stars"]
+    dropList["value"] = dropList["value"].astype("float64")
+    maskSAtech = dropList["rank"] == 3
+    dropList.loc[maskSAtech, "value"] = dropList["value"][maskSAtech].div(SA_TECH_TIME)
 
-def availFusion(fusedCard, card1, card2, fusionList):
-        if card1 == card2 and vault[card1-1] > 1:
-            return "%s <<< %s + %s"%(cardNames[fusedCard-1],cardNames[card1-1],cardNames[card2-1])
-        elif vault[card1-1] > 0 and vault[card2-1] > 0:
-            return "%s <<< %s + %s"%(cardNames[fusedCard-1],cardNames[card1-1],cardNames[card2-1])
-        elif card1 in fusionList and vault[card2-1] > 0:
-            return "%s <<< +%s+ + %s"%(cardNames[fusedCard-1],cardNames[card1-1],cardNames[card2-1])
-        elif vault[card1-1] > 0 and card2 in fusionList:
-            return "%s <<< %s + +%s+"%(cardNames[fusedCard-1],cardNames[card1-1],cardNames[card2-1])
-        return "*%s <<< %s + %s*"%(cardNames[fusedCard-1],cardNames[card1-1],cardNames[card2-1])
+    dropList["cardName"] = dropList["cid"].map(cardName)
+    dropList = dropList.sort_values("stars", ascending=False)
+
+    oponValue = dropList.groupby(["oponent", "rank"]).sum("value")
+    oponValue = dropList.sort_values("value", ascending=False)
+
+    for index, row in oponValue.head(4).iterrows():
+        print(f'{oponNames[int(row["oponent"])-1]} - {rankNames[int(row["rank"])-1]} ({row["value"]:,.0f})')
+        dropMask = (dropList["oponent"] == row["oponent"]) & (dropList["rank"] == row["rank"])
+        cols = ["cardName", "cid", "prob", "stars"]
+        print(dropList[dropMask].to_string(columns=cols, index=False))
+        print("\n")
     
 def fusionChecker(listCards, printUnavail):
     if len(listCards) > 0:
@@ -227,17 +216,24 @@ def fusionChecker(listCards, printUnavail):
             sqlCMD = 'SELECT * FROM `Fusions` WHERE result IN '
             sqlCMD += '(' + idStr[:-1] + ')' 
             mycursor.execute(sqlCMD)
-            fusList = pd.DataFrame(mycursor.fetchall(), columns=["result", "card1", "card2"])
+            cols = ["result", "card1", "card2"]
+            fusList = pd.DataFrame(mycursor.fetchall(), columns=cols)
+
             fusList["card1inVault"] = fusList["card1"].map(lambda x: vault[x])
             fusList["card2inVault"] = fusList["card2"].map(lambda x: vault[x])
+
             fusList["cardVolum"] = fusList["card1inVault"]*fusList["card2inVault"]
             fusList = fusList.sort_values("cardVolum", ascending=False).drop_duplicates("result").head(FUSIONS_TO_SHOW)
             fusList["resName"] = fusList["result"].map(cardName)
             fusList["c1Name"] = fusList["card1"].map(cardName)
             fusList["c2Name"] = fusList["card2"].map(cardName)
+
+            if fusList.shape[0] < 1:
+                return True
+
             cols = ["resName", "result", "c1Name", "card1", "card1inVault", "c2Name", "card2", "card2inVault"]
-            print(fusList[cols])
-            return fusList.shape[0] < 1
+            print(fusList.to_string(columns=cols, index=False))
+            return False
 
     return True
     
