@@ -219,8 +219,8 @@ def fusionChecker(listCards, printUnavail):
             cols = ["result", "card1", "card2"]
             fusList = pd.DataFrame(mycursor.fetchall(), columns=cols)
 
-            fusList["card1inVault"] = fusList["card1"].map(lambda x: vault[x])
-            fusList["card2inVault"] = fusList["card2"].map(lambda x: vault[x])
+            fusList["card1inVault"] = fusList["card1"].map(lambda x: vault[x-1])
+            fusList["card2inVault"] = fusList["card2"].map(lambda x: vault[x-1])
 
             fusList["cardVolum"] = fusList["card1inVault"]*fusList["card2inVault"]
             fusList = fusList.sort_values("cardVolum", ascending=False).drop_duplicates("result").head(FUSIONS_TO_SHOW)
