@@ -1,6 +1,6 @@
 ## Methods to quickly do A-techs
 
-As described in (GFC_'s vídeo)[https://www.youtube.com/watch?v=dmyEi5hBdQA].
+As described in [GFC_'s vídeo](https://www.youtube.com/watch?v=dmyEi5hBdQA).
 
 ### 4 effective attacks
 

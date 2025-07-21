@@ -170,7 +170,7 @@ def sdrop():
     for card in dropable:
         idStr += '%i,'%(card)
     sqlCMD = 'SELECT Droplist.cid,Droplist.oponent,Droplist.ranking,Droplist.prob,Cards.stars FROM `Droplist` JOIN `Cards` ON `Cards`.cid=`Droplist`.cid WHERE Droplist.cid IN '
-    sqlCMD += '(' + idStr[:-1] + ')' 
+    sqlCMD += '(' + idStr[:-1] + ') AND fusable = 0' 
     mycursor.execute(sqlCMD)
 
     print("\n---Drops---")
@@ -187,8 +187,8 @@ def sdrop():
     dropList["cardName"] = dropList["cid"].map(cardName)
     dropList = dropList.sort_values("stars", ascending=False)
 
-    oponValue = dropList.groupby(["oponent", "rank"]).sum("value")
-    oponValue = dropList.sort_values("value", ascending=False)
+    oponValue = dropList.groupby(["oponent", "rank"]).sum()
+    oponValue = oponValue.sort_values("value", ascending=False).reset_index()
 
     for index, row in oponValue.head(4).iterrows():
         print(f'{oponNames[int(row["oponent"])-1]} - {rankNames[int(row["rank"])-1]} ({row["value"]:,.0f})')
@@ -223,13 +223,41 @@ def fusionChecker(listCards, printUnavail):
             fusList["card2inVault"] = fusList["card2"].map(lambda x: vault[x-1])
 
             fusList["cardVolum"] = fusList["card1inVault"]*fusList["card2inVault"]
+
+            if (fusList["cardVolum"] > 0).sum() == 0:
+                sqlCMD = 'SELECT f1.result, f1.card2 AS card1, f2.card1 AS card2, f2.card2 as card3 from `Fusions` f1 JOIN `Fusions` AS f2 ON f1.card1=f2.result WHERE f1.result IN '
+                sqlCMD += '(' + idStr[:-1] + ')' 
+                mycursor.execute(sqlCMD)
+
+                cols = ["result", "card1", "card2", "card3"]
+                fusList = pd.DataFrame(mycursor.fetchall(), columns=cols)
+
+                sqlCMD = 'SELECT f1.result, f1.card1 AS card1, f2.card1 AS card2, f2.card2 as card3 from `Fusions` f1 JOIN `Fusions` AS f2 ON f1.card2=f2.result WHERE f1.result IN '
+                sqlCMD += '(' + idStr[:-1] + ')' 
+                mycursor.execute(sqlCMD)
+
+                cols = ["result", "card1", "card2", "card3"]
+                fusList = pd.concat([fusList, pd.DataFrame(mycursor.fetchall(), columns=cols)])
+
+                fusList["card1inVault"] = fusList["card1"].map(lambda x: vault[x-1])
+                fusList["card2inVault"] = fusList["card2"].map(lambda x: vault[x-1])
+                fusList["card3inVault"] = fusList["card3"].map(lambda x: vault[x-1])
+
+                fusList["cardVolum"] = fusList["card1inVault"]*fusList["card2inVault"]*fusList["card3inVault"]
+                fusList = fusList.sort_values("cardVolum", ascending=False).drop_duplicates("result").head(FUSIONS_TO_SHOW)
+                fusList["resName"] = fusList["result"].map(cardName)
+                fusList["c1Name"] = fusList["card1"].map(cardName)
+                fusList["c2Name"] = fusList["card2"].map(cardName)
+                fusList["c3Name"] = fusList["card3"].map(cardName)
+
+                cols = ["result", "c1Name", "card1", "card1inVault", "c2Name", "card2", "card2inVault", "c3Name", "card3", "card3inVault"]
+                print(fusList.to_string(columns=cols, index=False))
+                return True
+
             fusList = fusList.sort_values("cardVolum", ascending=False).drop_duplicates("result").head(FUSIONS_TO_SHOW)
             fusList["resName"] = fusList["result"].map(cardName)
             fusList["c1Name"] = fusList["card1"].map(cardName)
             fusList["c2Name"] = fusList["card2"].map(cardName)
-
-            if fusList.shape[0] < 1:
-                return True
 
             cols = ["resName", "result", "c1Name", "card1", "card1inVault", "c2Name", "card2", "card2inVault"]
             print(fusList.to_string(columns=cols, index=False))
