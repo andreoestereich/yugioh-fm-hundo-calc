@@ -274,9 +274,9 @@ def ritualsChecker():
         if result not in cardsInLib and result not in unoptainable:
             print("%s <<< %s ::: %s + %s + %s"%(cardNames[result-1],cardNames[ritual-1],cardNames[card1-1],cardNames[card2-1],cardNames[card3-1]))
 
-def starsLeft(starCount):
+def starsLeft(starCount, cardList):
     idStr = ""
-    for card in dropable:
+    for card in cardList:
         idStr += '%i,'%(card)
     sqlCMD = 'SELECT SUM(stars) AS starTot FROM `Cards` WHERE stars<5000 AND cid IN '
     sqlCMD += '('+ idStr[:-1] + ');'
@@ -284,7 +284,7 @@ def starsLeft(starCount):
     starsLeft = int(cleanFetch()[0])
     print("Have %i of %i stars needed."%(starCount, starsLeft))
     if starsLeft < starCount:
-        codesPrint(dropable)
+        codesPrint(cardList)
 
 def codesPrint(listCards):
     if len(listCards) > 0:
@@ -360,7 +360,7 @@ if len(argv) == 2 and isfile(argv[1]):
             rituals.remove(cid)
 
     print("%i of 689 obtained!"%(len(cardsInLib)))
-    starsLeft(stars)
+    starsLeft(stars, shouldBuy)
     ordering()
 else:
     printUsage()
