@@ -165,12 +165,12 @@ def mDrop(cardlist):
 
     return len(dropList) == 0
 
-def sdrop():
+def dropRoute(cardList):
     idStr = ""
-    for card in dropable:
+    for card in cardList: #dropable - shouldFuse - shouldBuy:
         idStr += '%i,'%(card)
     sqlCMD = 'SELECT Droplist.cid,Droplist.oponent,Droplist.ranking,Droplist.prob,Cards.stars FROM `Droplist` JOIN `Cards` ON `Cards`.cid=`Droplist`.cid WHERE Droplist.cid IN '
-    sqlCMD += '(' + idStr[:-1] + ') AND fusable = 0' 
+    sqlCMD += '(' + idStr[:-1] + ')' 
     mycursor.execute(sqlCMD)
 
     print("\n---Drops---")
@@ -196,6 +196,7 @@ def sdrop():
         cols = ["cardName", "cid", "prob", "stars"]
         print(dropList[dropMask].to_string(columns=cols, index=False))
         print("\n")
+    return dropList.shape[0] < 1
     
 def fusionChecker(listCards, printUnavail):
     if len(listCards) > 0:
@@ -307,12 +308,13 @@ def ordering():
         print("Clear must drop first")
         return
 
+    dropRoute(shouldDrop)
+    return
+
     if fusionChecker(mustFuse, True):
         fusionChecker(dropable, False)
 
-    sdrop()
 
-    return
     print("\n---Rituals---")
     ritualsChecker()
 
@@ -348,15 +350,17 @@ if len(argv) == 2 and isfile(argv[1]):
             dropable.remove(cid)
         if cid in mustDrop:
             mustDrop.remove(cid)
-        elif cid in shouldFuse:
+        if cid in shouldFuse:
             shouldFuse.remove(cid)
-        elif cid in shouldBuy:
+        if cid in shouldDrop:
+            shouldDrop.remove(cid)
+        if cid in shouldBuy:
             shouldBuy.remove(cid)
-        elif cid in mustFuse:
+        if cid in mustFuse:
             mustFuse.remove(cid)
-        elif cid in shouldFuse:
+        if cid in shouldFuse:
             shouldFuse.remove(cid)
-        elif cid in rituals:
+        if cid in rituals:
             rituals.remove(cid)
 
     print("%i of 689 obtained!"%(len(cardsInLib)))
