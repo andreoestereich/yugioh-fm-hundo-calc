@@ -166,37 +166,39 @@ def mDrop(cardlist):
     return len(dropList) == 0
 
 def dropRoute(cardList):
-    idStr = ""
-    for card in cardList: #dropable - shouldFuse - shouldBuy:
-        idStr += '%i,'%(card)
-    sqlCMD = 'SELECT Droplist.cid,Droplist.oponent,Droplist.ranking,Droplist.prob,Cards.stars FROM `Droplist` JOIN `Cards` ON `Cards`.cid=`Droplist`.cid WHERE Droplist.cid IN '
-    sqlCMD += '(' + idStr[:-1] + ')' 
-    mycursor.execute(sqlCMD)
+    if len(cardList) > 0:
+        idStr = ""
+        for card in cardList: #dropable - shouldFuse - shouldBuy:
+            idStr += '%i,'%(card)
+        sqlCMD = 'SELECT Droplist.cid,Droplist.oponent,Droplist.ranking,Droplist.prob,Cards.stars FROM `Droplist` JOIN `Cards` ON `Cards`.cid=`Droplist`.cid WHERE Droplist.cid IN '
+        sqlCMD += '(' + idStr[:-1] + ')' 
+        mycursor.execute(sqlCMD)
 
-    print("\n---Drops---")
-    cols = ["cid", "oponent", "rank", "prob", "stars"]
-    dropList = pd.DataFrame(mycursor.fetchall(), columns=cols)
+        print("\n---Drops---")
+        cols = ["cid", "oponent", "rank", "prob", "stars"]
+        dropList = pd.DataFrame(mycursor.fetchall(), columns=cols)
 
-    dropList = dropList[~dropList["oponent"].isin([35, 39])]
+        dropList = dropList[~dropList["oponent"].isin([35, 39])]
 
-    dropList["value"] = dropList["prob"]*dropList["stars"]
-    dropList["value"] = dropList["value"].astype("float64")
-    maskSAtech = dropList["rank"] == 3
-    dropList.loc[maskSAtech, "value"] = dropList["value"][maskSAtech].div(SA_TECH_TIME)
+        dropList["value"] = dropList["prob"]*dropList["stars"]
+        dropList["value"] = dropList["value"].astype("float64")
+        maskSAtech = dropList["rank"] == 3
+        dropList.loc[maskSAtech, "value"] = dropList["value"][maskSAtech].div(SA_TECH_TIME)
 
-    dropList["cardName"] = dropList["cid"].map(cardName)
-    dropList = dropList.sort_values("stars", ascending=False)
+        dropList["cardName"] = dropList["cid"].map(cardName)
+        dropList = dropList.sort_values("stars", ascending=False)
 
-    oponValue = dropList.groupby(["oponent", "rank"]).sum()
-    oponValue = oponValue.sort_values("value", ascending=False).reset_index()
+        oponValue = dropList.groupby(["oponent", "rank"]).sum()
+        oponValue = oponValue.sort_values("value", ascending=False).reset_index()
 
-    for index, row in oponValue.head(4).iterrows():
-        print(f'{oponNames[int(row["oponent"])-1]} - {rankNames[int(row["rank"])-1]} ({row["value"]:,.0f})')
-        dropMask = (dropList["oponent"] == row["oponent"]) & (dropList["rank"] == row["rank"])
-        cols = ["cardName", "cid", "prob", "stars"]
-        print(dropList[dropMask].to_string(columns=cols, index=False))
-        print("\n")
-    return dropList.shape[0] < 1
+        for index, row in oponValue.head(4).iterrows():
+            print(f'{oponNames[int(row["oponent"])-1]} - {rankNames[int(row["rank"])-1]} ({row["value"]:,.0f})')
+            dropMask = (dropList["oponent"] == row["oponent"]) & (dropList["rank"] == row["rank"])
+            cols = ["cardName", "cid", "prob", "stars"]
+            print(dropList[dropMask].to_string(columns=cols, index=False))
+            print("\n")
+        return dropList.shape[0] < 1
+    return True
     
 def fusionChecker(listCards, printUnavail):
     if len(listCards) > 0:
@@ -308,13 +310,13 @@ def ordering():
         print("Clear must drop first")
         return
 
-    dropRoute(shouldDrop)
-    return
+    if dropRoute(shouldDrop):
+        dropRoute(dropable)
 
     if fusionChecker(mustFuse, True):
         fusionChecker(dropable, False)
 
-
+    return 
     print("\n---Rituals---")
     ritualsChecker()
 
@@ -365,6 +367,7 @@ if len(argv) == 2 and isfile(argv[1]):
 
     print("%i of 689 obtained!"%(len(cardsInLib)))
     starsLeft(stars, shouldBuy)
+    starsLeft(stars, dropable)
     ordering()
 else:
     printUsage()
