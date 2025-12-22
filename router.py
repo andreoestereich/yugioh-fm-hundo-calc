@@ -326,7 +326,7 @@ def ordering():
     ritualsChecker()
 
 def printUsage():
-    print("Just use this right.")
+    print("Run this passing the path of the memory file as an argument.")
 
 if len(argv) == 2 and isfile(argv[1]):
     savePath = argv[1]
