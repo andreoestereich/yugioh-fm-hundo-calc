@@ -10,6 +10,7 @@ import pandas as pd
 SA_TECH_TIME = 4
 
 FUSIONS_TO_SHOW = 5
+PROB_W = 3
 
 #card list categories
 mustDrop = {1, 4, 16, 19, 20, 21, 26, 35, 38, 54, 82, 91, 103, 147, 338, 349, 350, 370, 371, 372, 373, 386, 391, 653, 707, 712, 713, 714}
@@ -180,7 +181,7 @@ def dropRoute(cardList):
 
         dropList = dropList[~dropList["oponent"].isin([35, 39])]
 
-        dropList["value"] = dropList["prob"]*dropList["stars"]
+        dropList["value"] = (dropList["prob"]**PROB_W)*dropList["stars"]
         dropList["value"] = dropList["value"].astype("float64")
         maskSAtech = dropList["rank"] == 3
         dropList.loc[maskSAtech, "value"] = dropList["value"][maskSAtech].div(SA_TECH_TIME)
@@ -316,8 +317,8 @@ def ordering():
     dropRoute(dropable)
 
     if fusionChecker(mustFuse, True):
-        if fusionChecker(shouldFuse, True):
-            fusionChecker(dropable, False)
+        fusionChecker(shouldFuse, True)
+        #fusionChecker(dropable, False)
 
     starsLeft(stars, shouldBuy)
     starsLeft(stars, dropable)
